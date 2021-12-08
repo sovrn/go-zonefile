@@ -1,1 +1,1 @@
-module github.com/bwesterb/go-zonefile
+module github.com/sovrn/go-zonefile
