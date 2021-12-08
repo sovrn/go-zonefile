@@ -323,12 +323,44 @@ func (z *Zonefile) AddEntry(e Entry) *Entry {
 	return &z.entries[len(z.entries)-1]
 }
 
-func (z *Zonefile) DeleteEntry(h string) {
+func (z *Zonefile) DeleteEntry(domainName string) {
 	for i, r := range z.entries {
-		if string(r.Domain()) == h {
+		if string(r.Domain()) == domainName {
 			z.entries = append(z.entries[:i], z.entries[i+1:]...)
 		}
 	}
+}
+
+func (z *Zonefile) UpdateSerial() error {
+	ok := false
+	for _, e := range z.Entries() {
+		if !bytes.Equal(e.Type(), []byte("SOA")) {
+			continue
+		}
+		
+		vs := e.Values()
+		if len(vs) != 7 {
+			return errors.New("Wrong number of parameters to SOA line")
+		}
+		
+		serial, err := strconv.Atoi(string(vs[2]))
+		if err != nil {
+			return fmt.Errorf("Could not parse serial: %s", err)
+		}
+		
+		err = e.SetValue(2, []byte(strconv.Itoa(serial+1)))
+		if err != nil {
+			return err
+		}
+
+		ok = true
+		break
+	}
+	if !ok {
+		return errors.New("Could not find SOA entry")
+	}
+
+	return nil
 }
 
 // Write the zonefile to a bytearray
