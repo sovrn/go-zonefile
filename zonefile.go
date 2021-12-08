@@ -323,6 +323,14 @@ func (z *Zonefile) AddEntry(e Entry) *Entry {
 	return &z.entries[len(z.entries)-1]
 }
 
+func (z *Zonefile) DeleteEntry(e Entry, h string) {
+	for i, r := range z.entries {
+		if string(r.Domain()) == h {
+			z.entries = append(z.entries[:i], z.entries[i+1:]...)
+		}
+	}
+}
+
 // Write the zonefile to a bytearray
 func (z *Zonefile) Save() []byte {
 	var buf bytes.Buffer
