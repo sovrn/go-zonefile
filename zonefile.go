@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 //
@@ -337,25 +338,49 @@ func (z *Zonefile) UpdateSerial() error {
 		if !bytes.Equal(e.Type(), []byte("SOA")) {
 			continue
 		}
-		
+
 		vs := e.Values()
 		if len(vs) != 7 {
 			return errors.New("Wrong number of parameters to SOA line")
 		}
-		
-		serial, err := strconv.Atoi(string(vs[2]))
-		if err != nil {
-			return fmt.Errorf("Could not parse serial: %s", err)
-		}
-		
-		err = e.SetValue(2, []byte(strconv.Itoa(serial+1)))
-		if err != nil {
-			return err
-		}
 
-		ok = true
-		break
+		// 2021120801 YYYYMMDDCC (CC == count)
+		today := time.Now()
+		date := today.Format("20060102")
+		count := fmt.Sprintf("%02d", 1)
+
+		serDate := string(vs[2])[0:8]
+		serCount := string(vs[2])[8:10]
+
+		// if the file's serial date is out of date
+		if serDate != date {
+			serDate = date   // set the file's serial to todays date
+			serCount = count // set the file's serial count to 01
+
+			err := e.SetValue(2, []byte(serDate + serCount))
+			if err != nil {
+				return err
+			}
+			ok = true
+			break
+		} else {	
+			// now compare count and increase if necessary
+			curCount, _ := strconv.Atoi(serCount)
+			c, _ := strconv.Atoi(count)
+			
+			if curCount >= c {
+				serCount = fmt.Sprintf("%02d", curCount+1)
+			}
+			
+			err := e.SetValue(2, []byte(serDate + serCount))
+			if err != nil {
+				return err
+			}
+			ok = true
+			break
+		}
 	}
+
 	if !ok {
 		return errors.New("Could not find SOA entry")
 	}
